@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<flow name="currency-conversion-flow" doc:id="7f67e683-01f4-4b56-a24f-6f51919bb5cc" >
+		<ee:transform doc:name="DW Store the required attributes in variables" doc:id="e678903e-ecc2-461a-9103-b83e68f3aade" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="from" ><![CDATA[%dw 2.0
+output text/plain
+---
+message.attributes.queryParams.from as String default "USD"]]></ee:set-variable>
+				<ee:set-variable variableName="to" ><![CDATA[%dw 2.0
+output text/plain
+---
+message.attributes.queryParams.to as String default "INR"]]></ee:set-variable>
+				<ee:set-variable variableName="value" ><![CDATA[%dw 2.0
+output text/plain
+---
+message.attributes.queryParams.value ]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable doc:name="appID" doc:id="86a71b4c-206e-418e-9649-3a0d136dba76" variableName="appID" value="#[message.attributes.queryParams.app_id]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="29d0e6b2-6f9b-41b3-8c7c-fe78eaabd6fe" />
+		<http:request method="GET" doc:name="GET Currency conversion list" doc:id="2428b81b-5a89-4be7-b488-e1c3e502b015" config-ref="HTTP_Request_configuration" path="/latest.json">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"app_id" : vars.appID
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="27927670-ef8c-4ae5-a229-31898076dfd7" />
+		<ee:transform doc:name="DW Conversion of the currency to the required form" doc:id="33295201-63d9-4e58-8a95-73b5e0885211" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+"Converted amount": (payload.rates[vars.to] as Number) * (vars.value as Number),
+"Rate": payload.rates[vars.to] as Number
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
